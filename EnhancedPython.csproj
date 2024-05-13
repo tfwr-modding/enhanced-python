@@ -2,8 +2,6 @@
 
     <PropertyGroup>
         <TargetFramework>net46</TargetFramework>
-        <RootNamespace>ExampleMod</RootNamespace>
-        <AssemblyName>ExampleMod</AssemblyName>
         <Description>My first plugin</Description>
         <Version>1.0.0</Version>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -14,6 +12,7 @@
             https://nuget.bepinex.dev/v3/index.json;
             https://nuget.samboy.dev/v3/index.json
         </RestoreAdditionalProjectSources>
+        <PackageId>EnhancedPython</PackageId>
     </PropertyGroup>
 
     <ItemGroup>
@@ -26,6 +25,12 @@
     <ItemGroup>
         <Reference Include="Core">
             <HintPath>libs\Core.dll</HintPath>
+        </Reference>
+        <Reference Include="Utils">
+            <HintPath>libs\Utils.dll</HintPath>
+        </Reference>
+        <Reference Include="mscorlib">
+            <HintPath>libs\mscorlib.dll</HintPath>
         </Reference>
     </ItemGroup>
 
