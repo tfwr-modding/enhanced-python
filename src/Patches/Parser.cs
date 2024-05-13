@@ -28,23 +28,23 @@ public class ParserPatcher
                    var node3 = new BitwiseOperation(op.value, op.type, window, op.startIndex, op.startIndex + op.value.Length);
                    
                    node3.slots.Add(node);
-                   if (node2 is not BitwiseOperation exprNode || !Parser.operators[opIndex].Item1.Contains(exprNode.opTokenType))
+                   if (!new Type[] { typeof(BinaryExprNode), typeof(BitwiseOperation) }.Contains(node2.GetType()) || 
+                       !Parser.operators[opIndex].Item1.Contains(((BitwiseOperation)node2).opTokenType))
                    {
                        node3.slots.Add(node2);
                        return node3;
                    }
                    
-                   Node node4 = exprNode;
-                   while (node4.slots[0] is BitwiseOperation &&
-                          Parser.operators[opIndex].Item1.Contains(((BitwiseOperation)node4.slots[0]).opTokenType))
+                   while (node2.slots[0] is BitwiseOperation &&
+                          Parser.operators[opIndex].Item1.Contains(((BitwiseOperation)node2.slots[0]).opTokenType))
                    {
-                       node4 = node4.slots[0];
+                       node2 = node2.slots[0];
                    }
                    
-                   node3.slots.Add(node4.slots[0]);
-                   node4.slots[0] = node3;
+                   node3.slots.Add(node2.slots[0]);
+                   node2.slots[0] = node3;
                    
-                   return exprNode;
+                   return node2;
                }
                return node;
            })

@@ -25,7 +25,7 @@ public class BitwiseOperation: Node
         foreach (var num2 in slots[1].Execute(state, interpreter, depth + 1)) yield return num2;
         var rhs = state.returnValue;
         
-        if (lhs is not double || rhs is not double)
+        if ((lhs is not int || rhs is not int) || (lhs is not double || rhs is not double))
         {
             throw new ExecuteException(
                 CodeUtilities.FormatError("error_bad_bin_operator", new [] { op, lhs, rhs }),
