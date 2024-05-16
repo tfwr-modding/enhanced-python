@@ -1,7 +1,7 @@
 ﻿using BepInEx;
 using BepInEx.Logging;
+using EnhancedPython.Patches;
 using HarmonyLib;
-using UnityEngine;
 
 namespace EnhancedPython;
 
@@ -18,11 +18,11 @@ public class Plugin : BaseUnityPlugin
         Instance = this;
         Log = Logger;
         
+        TokenizerPatches.Apply();
+        ParserPatches.Apply();
+        harmony.PatchAll();
+        
         // Plugin startup logic
         Log.LogInfo($"Plugin {MyPluginInfo.PLUGIN_GUID} is loaded!");
-
-        TokenizerPatcher.Init();
-        ParserPatcher.Init();
-        harmony.PatchAll();
     }
 }

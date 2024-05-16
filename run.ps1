@@ -7,11 +7,14 @@ $pluginsRoot = "${gameRoot}\BepInEx\plugins"
 #### <Init>
 $ErrorActionPreference = "Stop"
 $projectName = "EnhancedPython"
+$processName = "TheFarmerWasReplaced"
 #### </Init>
 
 ##### <BeforeBuild>
-$process = Get-Process -Name "TheFarmerWasReplaced" -ErrorAction SilentlyContinue
+$shouldRelaunch=0
+$process = Get-Process -Name $processName -ErrorAction SilentlyContinue
 if ($process) {
+    $shouldRelaunch=1
     Stop-Process -Id $process.Id -ErrorAction Stop
     $process.WaitForExit()
 }
@@ -40,12 +43,16 @@ if (-not $?) {
 }
 
 $assemblyPath = "$buildDir\$projectName.dll"
+$pdbPath = "$buildDir\$projectName.pdb"
 
 Copy-Item -Path $assemblyPath -Destination $pluginsRoot -Force
+Copy-Item -Path $pdbPath -Destination $pluginsRoot -Force
 ##### </Build>
 
 ##### <AfterBuild>
 Remove-Item -Path $buildDir -Recurse -Force
 
-start steam://rungameid/2060160
+if ($shouldRelaunch -eq 1) {
+    start steam://rungameid/2060160
+}
 ##### </AfterBuild>
