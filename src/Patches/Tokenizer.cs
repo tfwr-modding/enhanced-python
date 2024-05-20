@@ -13,11 +13,12 @@ public enum ExtendedTokenType
     BITWISE_SHIFT_RIGHT   = (TokenType.UNKNOWN + 4096) + 5,
     
     STRING_LITERAL_PREFIX = (TokenType.UNKNOWN + 4096) + 6,
+    CLASS_KEYWORD         = (TokenType.UNKNOWN + 4096) + 7,
 }
 
 public static class TokenizerPatches
 {
-    public static List<(Regex, uint)> regexes = new()
+    internal static List<(Regex, uint)> prefix = new()
     {
         // define invalid tokens
         (new Regex("""^(?:&|\||\^|~){2,}"""), (uint)TokenType.UNKNOWN),
@@ -35,11 +36,18 @@ public static class TokenizerPatches
         (new Regex("""^(['\"])(.*?[^\\])\1"""), (uint)TokenType.STRING),                  // Normal string
         (new Regex("^[fr](?='.*?')"), (uint)ExtendedTokenType.STRING_LITERAL_PREFIX),     // f'string' and r'string'
         (new Regex("""^[fr](?=".*?")"""), (uint)ExtendedTokenType.STRING_LITERAL_PREFIX), // f"string" and r"string"
+        
+        // define keywords
+        (new Regex("""^class(?=\s+\w+)"""), (uint)ExtendedTokenType.CLASS_KEYWORD),        // class keyword, uses a positive lookahead to allow class as a variable name
     };
     
     public static void Apply()
     {
         // ReSharper disable once SuspiciousTypeConversion.Global
-        Tokenizer.regexes.InsertRange(0, regexes.Select(tuple => (tuple.Item1, (TokenType)tuple.Item2)));
+        Tokenizer.regexes.InsertRange(0, prefix.Select(tuple => (tuple.Item1, (TokenType)tuple.Item2)));
+
+        // override the identifier regex to allow underscores at the start of a variable name
+        var idx = Tokenizer.regexes.FindIndex(t => t.Item2 == TokenType.IDENTIFIER);
+        Tokenizer.regexes[idx] = (new Regex("""^[a-zA-Z_]\w*"""), TokenType.IDENTIFIER);
     }
 }

@@ -20,6 +20,7 @@ public class Plugin : BaseUnityPlugin
         
         TokenizerPatches.Apply();
         ParserPatches.Apply();
+        CodeUtilitiesPatch.Apply();
         harmony.PatchAll();
         
         // Plugin startup logic
