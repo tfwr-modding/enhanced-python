@@ -1,4 +1,7 @@
-﻿namespace EnhancedPython.Patches.Nodes;
+﻿using EnhancedPython.PyObjects;
+using EnhancedPython.utils;
+
+namespace EnhancedPython.Patches.Nodes;
 
 public class ClassNode: Node
 {
@@ -6,11 +9,11 @@ public class ClassNode: Node
     
     public string className;
     public string? parentName;
-    public List<DefNode> methods;
+    public DefNode[] methods;
     
     public ClassNode(
         string className, string? parentName,
-        List<DefNode> methods,
+        DefNode[] methods,
         bool global,
         CodeWindow codeWindow, int startIndex, int endIndex
     ) : base(codeWindow, startIndex, endIndex)
@@ -26,14 +29,22 @@ public class ClassNode: Node
 
     public override IEnumerable<double> Execute(ProgramState state, Interpreter interpreter, int depth)
     {
-        foreach (var item in base.Execute(state, interpreter, depth)) yield return item;
-        Plugin.Log.LogInfo("ClassNode.Execute() called!");
+        foreach (var item in base.Execute(state, interpreter, depth + 1)) yield return item;
+        Blink(interpreter);
+
+        var scope = new Scope(className, interpreter.State.CurrentScope);
+        var funcs = methods.Select(method => new PyFunction(method.funcName, method.slots[0], scope)).ToArray();
+
+        interpreter.State.CurrentScope.SetVar(className, new PyClass(className, funcs, interpreter.State.CurrentScope));
+        state.ReturnValue = new PyNone();
+        
+        yield return interpreter.GetOpCount(NodeType.Expr);
     }
 
     public static ClassNode Parse(TokenStream stream, CodeWindow f, int indentation, bool global)
     {
         _ = stream.Consume((TokenType)ExtendedTokenType.CLASS_KEYWORD);
-        var name = stream.Consume(TokenType.IDENTIFIER);
+        var className = stream.Consume(TokenType.IDENTIFIER);
         Token? baseClass = null;
         
         if ((uint?)stream.Current?.type == (uint)TokenType.BRACKET_OPEN)
@@ -48,10 +59,19 @@ public class ClassNode: Node
         }
         
         _ = stream.Consume(TokenType.COLON, "error_missing_colon");
-        
-        var methods = new List<DefNode>();
-        // TODO: Parse methods and attributes, based on the indentation
-        
-        return new ClassNode(name.value, baseClass?.value, methods, global, f, name.startIndex, name.startIndex);
+
+        var block = Parser.Block(stream, f, indentation) as SequenceNode;
+        var seq = block!.slots;
+
+        var methods = seq.OfType<DefNode>().ToArray();
+        var rest = seq.Except(methods).ToArray();
+
+        foreach (var item in rest)
+        {
+            if (item is not { nodeName: "assign" })
+                throw new ParseException("error_unexpected_node", item.wordStart, item.wordEnd);
+        }
+
+        return new ClassNode(className.value, baseClass?.value, methods, global, f, className.startIndex, className.startIndex);
     }
 }
