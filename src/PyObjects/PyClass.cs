@@ -14,6 +14,8 @@ public class PyClass : IPyObject
 
     public PyClass(string className, PyFunction[] methods, Scope parentScope, IPyObject methodObject = null)
     {
+        foreach (var method in methods) method.methodObject = this;
+
         this.className = className;
         this.methods = methods;
         this.parentScope = parentScope;

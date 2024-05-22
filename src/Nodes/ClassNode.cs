@@ -33,9 +33,13 @@ public class ClassNode: Node
         Blink(interpreter);
 
         var scope = new Scope(className, interpreter.State.CurrentScope);
-        var funcs = methods.Select(method => new PyFunction(method.funcName, method.slots[0], scope)).ToArray();
+        var functions = methods
+            .Select(method => new PyFunction(method.funcName, method.slots[0], scope))
+            .ToArray();
 
-        interpreter.State.CurrentScope.SetVar(className, new PyClass(className, funcs, interpreter.State.CurrentScope));
+        var pyClass = new PyClass(className, functions, interpreter.State.CurrentScope);
+
+        interpreter.State.CurrentScope.SetVar(className, pyClass);
         state.ReturnValue = new PyNone();
         
         yield return interpreter.GetOpCount(NodeType.Expr);
