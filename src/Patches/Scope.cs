@@ -9,7 +9,7 @@ public class ScopePatches
 {
     [HarmonyPrefix]
     [HarmonyPatch(nameof(Scope.Evaluate))]
-    public static bool Evaluate(string s, int wordStart, int wordEnd,
+    public static bool Evaluate(string s,
         Scope __instance, ref IPyObject __result)
     {
         var pyObject = Scope.EvaluateConstant(s);
@@ -32,11 +32,13 @@ public class ScopePatches
         }
         
         if (__instance.vars.TryGetValue(s, out __result)) goto end;
+        
+        Plugin.Log.LogInfo($"Unknown node: {s}, {string.Join(',', __instance.vars.Keys)}");
 
         if (__instance.parentScope == null)
-            throw new ExecuteException(CodeUtilities.FormatError("error_name_not_defined", s), wordStart, wordEnd);
+            throw new ExecuteException(CodeUtilities.FormatError("error_name_not_defined", s));
         
-        __result = __instance.parentScope.Evaluate(s, wordStart, wordEnd);
+        __result = __instance.parentScope.Evaluate(s);
 
         end:
         return PrefixAction.SkipOriginal;

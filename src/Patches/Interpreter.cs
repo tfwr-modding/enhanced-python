@@ -11,10 +11,8 @@ public class InterpreterPatches
     static IEnumerable<double> CallFunction(
         IEnumerable<double> result,
         // Arguments
-        PyFunction func, List<IPyObject> parameters,
-        int wordStart, int wordEnd, int depth
+        PyFunction func, List<IPyObject> parameters, int depth
     ) {
-        Plugin.Log.LogInfo($"aaaa {func.methodObject}");
         if (func.methodObject is not PyClass pyClass)
         {
             foreach (var item in result) yield return item;
@@ -22,6 +20,6 @@ public class InterpreterPatches
         }
         
         Plugin.Log.LogInfo($"Calling a class method! {pyClass.className}.{func.functionName}");
-        throw new ExecuteException("NotImplemented", wordStart, wordEnd);
+        throw new ExecuteException("NotImplemented");
     }
 }

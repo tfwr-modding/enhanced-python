@@ -43,7 +43,7 @@ public class BinaryExprNodePatch
         if (lhs is not PyNumber leftHandSide ||
             rhs is not PyNumber rightHandSide
         ) {
-            throw new ExecuteException(CodeUtilities.FormatError("error_bad_bin_operator", op, lhs, rhs), __instance.wordStart, __instance.wordEnd);
+            throw new ExecuteException(CodeUtilities.FormatError("error_bad_bin_operator", op, lhs, rhs));
         }
         
         // check if both sides are integers
@@ -52,7 +52,7 @@ public class BinaryExprNodePatch
             Math.Abs(leftHandSide.num % 1) >= (double.Epsilon * 100) &&
             Math.Abs(rightHandSide.num % 1) >= (double.Epsilon * 100)
         ) {
-            throw new ExecuteException(CodeUtilities.FormatError("error_bad_bin_operator", op, lhs, rhs), __instance.wordStart, __instance.wordEnd);
+            throw new ExecuteException(CodeUtilities.FormatError("error_bad_bin_operator", op, lhs, rhs));
         }
         
         var (iLhs, iRhs) = (Convert.ToInt32(leftHandSide.num), Convert.ToInt32(rightHandSide.num));

@@ -29,7 +29,7 @@ public class ParserPatches
 
         return PrefixAction.CallOriginal;
     }
-    
+
     internal static List<(List<TokenType>, Func<TokenStream, CodeWindow, int, bool, Node>)> operators = new()
     {
         // Bitwise operators
