@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using EnhancedPython.utils;
 using HarmonyLib;
 
 namespace EnhancedPython.Patches.Nodes;
@@ -51,7 +52,7 @@ public class UnaryExprNodePatch
                     throw new ExecuteException(CodeUtilities.FormatError("error_bad_unary_operator", op, rhs));
                 }
 
-                long num = Convert.ToInt64(number.num);
+                var num = Convert.ToInt64(number.num);
                 state.returnValue = new PyNumber(~num);
                 break;
             }
@@ -61,256 +62,36 @@ public class UnaryExprNodePatch
                 if (rhs is not PyString pyString)
                     throw new ExecuteException(CodeUtilities.FormatError("error_bad_unary_operator", op, rhs));
 
-                // TODO(Step 1): Extract all the {} expressions from the string
-                // Example: f"1 + 1 = {1+1}" => ["{1+1}"]
-                var strings = SplitOnEmbeddedExpressions(pyString.str);
-                var prefix = "\n • ";
-                Plugin.Log.LogInfo($"{nameof(SplitOnEmbeddedExpressions)}():{prefix}{string.Join(prefix, strings)}");
+                // Step 1: Extract all the {} expressions from the string
+                var parts = Features.FormatStrings.StrFmtParser.SplitOnExpressions(pyString.str);
+                Plugin.Log.LogInfo($"SplitOnEmbeddedExpressions():\n • {string.Join("\n • ", parts)}");
 
-                // TODO(Step 2): Evaluate each expression.
-                // Example: ["{1+1}"] => ["2"]
+                // If there are no expressions, return the string as is.
+                if (!parts.Any(p => p.IsExpression))
+                {
+                    state.returnValue = new PyString(pyString.str);
+                    break;
+                }
+                
+                // Step 2: Evaluate the expressions
+                var sb = new StringBuilder();
+                foreach (var part in parts)
+                {
+                    if (part.IsExpression)
+                    {
+                        // TODO(Arjix): Interpreter.Evaluate is not a real thing :(
+                        // sb.Append(interpreter.Evaluate(part.Content, state, depth + 1));
+                    }
+                    else sb.Append(part.Content);
+                }
 
-                // TODO(Step 3): Create a new string with the evaluated expressions.
-                // Example: f"1 + 1  = {1+1}" => "1 + 1 = 2"
-
-                state.returnValue = new PyString(string.Join(string.Empty, strings));
+                // Step 3: Create a new string with the evaluated expressions.
+                state.returnValue = new PyString(sb.ToString());
                 break;
             }
 
             case "r": throw new NotImplementedException("Raw strings are not implemented yet.");
         }
         yield return 1.0; // number of ops
-
-
-        // split on embedded expressions (e.g. {1+1})
-        IEnumerable<string> SplitOnEmbeddedExpressions(string str)
-        {
-            var index = -1;
-            var insideBraces = false;
-            var wasLastCharEscape = false;
-            var wasLastCharOpenBrace = false;
-            var wasLastCharCloseBrace = false;
-            var currentChar = default(char);
-            var openBraceCount = 0;
-            var sbNode = new StringBuilder();
-            var sbNodes = new List<StringBuilder>();
-
-            bool IsEscape() => currentChar is '\\';
-            bool IsOpenBrace() => currentChar is '{';
-            bool IsCloseBrace() => currentChar is '}';
-            bool MoveNext()
-            {
-                if (insideBraces is false)
-                {
-                    wasLastCharEscape = wasLastCharEscape is false && IsEscape();
-                    wasLastCharOpenBrace = wasLastCharOpenBrace is false && IsOpenBrace();
-                    wasLastCharCloseBrace = wasLastCharCloseBrace is false && IsCloseBrace();
-                }
-                if (++index < str.Length)
-                {
-                    currentChar = str[index];
-                    return true;
-                }
-                return false;
-            }
-
-            // TODO: patch Utils.Localizer?
-            var language = new Dictionary<string, string>()
-            {
-                {"error_fstring_empty_not_allowed", "f-string: empty expression not allowed"},
-                {"error_fstring_expecting_close", "f-string: expecting '}'"},
-                {"error_fstring_single_close", "f-string: single '}' is not allowed"},
-                {"error_fstring_backslash_in_expression", "f-string expression part cannot include a backslash"},
-                {"warning_fstring_invalid_escape", "f-string: invalid escape sequence '\\{0}'"},
-            };
-            string FormatError(string key, params object[] args)
-            {
-                if (sbNode.Length > 0) sbNodes.Add(sbNode);
-                return language.ContainsKey(key) ? language[key] : CodeUtilities.FormatError(key, args);
-            };
-            void LogWarning(string key, params object[] args)
-            {
-                var format = language.ContainsKey(key) ? language[key] : Localizer.Localize(key);
-                var formatted = string.Format(format, args);
-                Plugin.Log.LogWarning(formatted);
-                Logger.LogWarning(formatted, state);
-            }
-
-            // iterate over the string
-            while (MoveNext() is true)
-            {
-                switch (insideBraces)
-                {
-                    case true: HandleInsideBraces(); break;
-                    case false: HandleOutsideBraces(); break;
-                }
-            }
-
-            // post parsing
-
-            if (insideBraces is true || wasLastCharOpenBrace is true)
-            {
-                throw new ExecuteException(FormatError("error_fstring_expecting_close", currentChar));
-            }
-            if (wasLastCharCloseBrace is true)
-            {
-                throw new ExecuteException(FormatError("error_fstring_single_close"));
-            }
-
-            // TODO: is more error checking needed?
-
-            // is the last node not empty?
-            if (sbNode.Length > 0)
-            {
-                sbNodes.Add(sbNode);
-            }
-
-            return sbNodes.Select(n => n.ToString());
-
-            void HandleInsideBraces()
-            {
-                // is current character a backslash?
-                if (IsEscape() is true)
-                {
-                    // expression cannot include a backslash
-                    throw new ExecuteException(FormatError("error_fstring_backslash_in_expression"));
-                }
-
-                if (IsOpenBrace() is true)
-                {
-                    openBraceCount++; // one more open brace
-                    sbNode.Append(currentChar);
-                    return;
-                }
-
-                if (IsCloseBrace() is true)
-                {
-
-                    // one less open brace
-                    openBraceCount--;
-
-                    // more open braces?
-                    if (openBraceCount > 0)
-                    {
-                        sbNode.Append(currentChar);
-                        return;
-                    }
-
-                    // too many close braces
-                    if (openBraceCount < 0)
-                    {
-                        throw new ExecuteException(FormatError("error_fstring_single_close"));
-                    }
-
-                    // TODO: handle empty expressions with whitespace
-                    if (sbNode.Length is 0)
-                    {
-                        throw new ExecuteException(FormatError("error_fstring_empty_not_allowed"));
-                    }
-
-                    // switch to outside braces
-                    insideBraces = false;
-                    sbNodes.Add(sbNode);
-                    sbNode = new StringBuilder();
-
-                    // clear the flag
-                    wasLastCharCloseBrace = false;
-                    // clear the current char so the flag won't be set by MoveNext()
-                    currentChar = default;
-
-                    // next iteration
-                    return;
-                }
-
-                // handle any other character
-                sbNode.Append(currentChar);
-            }
-
-            void HandleOutsideBraces()
-            {
-                // escape the current char?
-                if (wasLastCharEscape is true)
-                {
-                    // TODO: handle octal escapes
-                    // TODO: handle hex escapes
-                    // TODO: handle unicode escapes
-                    // other escapes missing?
-                    Dictionary<char, string> escapes = new(){
-                        {'a', "\a"}, // alert (bell)
-						{'b', "\b"}, // backspace
-						{'f', "\f"}, // form feed
-						{'r', "\r"}, // carriage return
-						{'v', "\v"}, // vertical tab
-						{'n', "\n"}, // newline
-						{'t', "\t"}, // horizontal tab
-						{'\'', "'"}, // single quote
-						{'"', "\""}, // double quote
-						{'\\', "\\"}, // double backslash
-					};
-                    if (escapes.ContainsKey(currentChar) is true)
-                    {
-                        sbNode.Append(escapes[currentChar]);
-                    }
-                    else
-                    {
-                        sbNode.Append("\\" + currentChar);
-                        LogWarning("warning_fstring_invalid_escape", currentChar);
-                    }
-
-                    // next iteration
-                    return;
-                }
-
-                // was the last character an open brace?
-                if (wasLastCharOpenBrace is true)
-                {
-
-                    // is this a 2nd open brace?
-                    if (IsOpenBrace() is true)
-                    {
-                        // the two become one, the 1st was skipped
-                        sbNode.Append(currentChar);
-
-                        // next iteration
-                        return;
-                    }
-                    insideBraces = true;
-                    openBraceCount = 1;
-                    sbNodes.Add(sbNode);
-                    sbNode = new StringBuilder();
-
-                    // rehandle the current char as inside braces
-                    index--;
-
-                    // clear the flag
-                    wasLastCharOpenBrace = false;
-                    // clear the current char so the flag won't be set by MoveNext()
-                    currentChar = default;
-
-                    // next iteration
-                    return;
-                }
-                if (wasLastCharCloseBrace is true)
-                {
-                    // is this a 2nd close brace?
-                    if (IsCloseBrace() is true)
-                    {
-                        // the two become one, the 1st was skipped
-                        sbNode.Append(currentChar);
-
-                        // next iteration
-                        return;
-                    }
-                    throw new ExecuteException(FormatError("error_fstring_single_close", currentChar));
-                }
-
-                // to be skipped?
-                if (IsEscape() is true || IsOpenBrace() is true || IsCloseBrace() is true)
-                {
-                    return;
-                }
-                sbNode.Append(currentChar);
-            }
-        }
     }
 }
