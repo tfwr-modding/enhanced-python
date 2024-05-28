@@ -64,8 +64,6 @@ public class UnaryExprNodePatch
 					// TODO(Step 1): Extract all the {} expressions from the string
 					// Example: f"1 + 1 = {1+1}" => ["{1+1}"]
 					var strings = SplitOnEmbeddedExpressions(pyString.str);
-					var prefix = "\n • ";
-					// Plugin.Log.LogInfo($"{nameof(SplitOnEmbeddedExpressions)}():{prefix}{string.Join(prefix, strings)}");
 
 					// TODO(Step 2): Evaluate each expression.
 					// Example: ["{1+1}"] => ["2"]
@@ -74,7 +72,6 @@ public class UnaryExprNodePatch
 					// Example: f"1 + 1  = {1+1}" => "1 + 1 = 2"
 
 					state.returnValue = new PyString(string.Join(string.Empty, strings));
-					// Plugin.Log.LogInfo($"{nameof(state.returnValue)}():{state.returnValue}");
 					break;
 				}
 
@@ -127,7 +124,6 @@ public class UnaryExprNodePatch
 			string FormatError(string key, params object[] args)
 			{
 				if (sbNode.Length > 0) sbNodes.Add(sbNode);
-				// Plugin.Log.LogInfo($"{nameof(sbNodes)}: {"\n • " + string.Join("\n • ", sbNodes)}");
 				return language.ContainsKey(key) ? language[key] : CodeUtilities.FormatError(key, args);
 			};
 			void LogWarning(string key, params object[] args)
@@ -141,19 +137,14 @@ public class UnaryExprNodePatch
 			// iterate over the string
 			while (MoveNext() is true)
 			{
-				// Plugin.Log.LogInfo($"{nameof(str)}[{index}] = '{currentChar}'");
 				switch (insideBraces)
 				{
 					case true: HandleInsideBraces(); break;
 					case false: HandleOutsideBraces(); break;
 				}
-				// Plugin.Log.LogInfo($"sbNode = {sbNode}");
 			}
 
 			// post parsing
-			// Plugin.Log.LogInfo($" • {nameof(insideBraces)} = {insideBraces}");
-			// Plugin.Log.LogInfo($" • {nameof(wasLastCharOpenBrace)} = {wasLastCharOpenBrace}");
-			// Plugin.Log.LogInfo($" • {nameof(wasLastCharCloseBrace)} = {wasLastCharCloseBrace}");
 
 			if (insideBraces is true || wasLastCharOpenBrace is true)
 			{
@@ -192,7 +183,6 @@ public class UnaryExprNodePatch
 
 				if (IsCloseBrace() is true)
 				{
-					// Plugin.Log.LogInfo($" • {nameof(openBraceCount)} = {openBraceCount}");
 
 					// one less open brace
 					openBraceCount--;
@@ -218,7 +208,6 @@ public class UnaryExprNodePatch
 
 					// switch to outside braces
 					insideBraces = false;
-					// Plugin.Log.LogInfo($" • {nameof(insideBraces)} = {insideBraces}");
 					sbNodes.Add(sbNode);
 					sbNode = new StringBuilder();
 
@@ -240,7 +229,6 @@ public class UnaryExprNodePatch
 				// escape the current char?
 				if (wasLastCharEscape is true)
 				{
-					// Plugin.Log.LogInfo($" • wasLastCharEscape = {wasLastCharEscape}");
 					// TODO: handle octal escapes
 					// TODO: handle hex escapes
 					// TODO: handle unicode escapes
@@ -274,7 +262,6 @@ public class UnaryExprNodePatch
 				// was the last character an open brace?
 				if (wasLastCharOpenBrace is true)
 				{
-					// Plugin.Log.LogInfo($" • {nameof(wasLastCharOpenBrace)} = {wasLastCharOpenBrace}");
 
 					// is this a 2nd open brace?
 					if (IsOpenBrace() is true)
@@ -287,7 +274,6 @@ public class UnaryExprNodePatch
 					}
 					insideBraces = true;
 					openBraceCount = 1;
-					// Plugin.Log.LogInfo($" • {nameof(insideBraces)} = {insideBraces}");
 					sbNodes.Add(sbNode);
 					sbNode = new StringBuilder();
 
@@ -304,7 +290,6 @@ public class UnaryExprNodePatch
 				}
 				if (wasLastCharCloseBrace is true)
 				{
-					// Plugin.Log.LogInfo($" • {nameof(wasLastCharCloseBrace)} = {wasLastCharCloseBrace}");
 					// is this a 2nd close brace?
 					if (IsCloseBrace() is true)
 					{
@@ -320,7 +305,6 @@ public class UnaryExprNodePatch
 				// to be skipped?
 				if (IsEscape() is true || IsOpenBrace() is true || IsCloseBrace() is true)
 				{
-					// Plugin.Log.LogInfo($" • skipping first {currentChar}");
 					return;
 				}
 				sbNode.Append(currentChar);
