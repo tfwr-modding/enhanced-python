@@ -87,27 +87,33 @@ public class UnaryExprNodePatch
 		IEnumerable<string> SplitOnEmbeddedExpressions(string str)
 		{
 			var index = -1;
+			var insideBraces = false;
 			var wasLastCharEscape = false;
 			var wasLastCharOpenBrace = false;
 			var wasLastCharCloseBrace = false;
 			var currentChar = default(char);
+			var openBraceCount = 0;
+			var sbNode = new StringBuilder();
+			var sbNodes = new List<StringBuilder>();
+
 			bool IsEscape() => currentChar is '\\';
 			bool IsOpenBrace() => currentChar is '{';
 			bool IsCloseBrace() => currentChar is '}';
 			bool MoveNext()
 			{
-				if (index >= str.Length - 1) return false;
-				wasLastCharEscape = wasLastCharEscape is false && IsEscape();
-				wasLastCharOpenBrace = wasLastCharOpenBrace is false && IsOpenBrace();
-				wasLastCharCloseBrace = wasLastCharCloseBrace is false && IsCloseBrace();
-				index++; // index of current character
-				currentChar = str[index];
-				return true;
+				if (insideBraces is false)
+				{
+					wasLastCharEscape = wasLastCharEscape is false && IsEscape();
+					wasLastCharOpenBrace = wasLastCharOpenBrace is false && IsOpenBrace();
+					wasLastCharCloseBrace = wasLastCharCloseBrace is false && IsCloseBrace();
+				}
+				if (++index < str.Length)
+				{
+					currentChar = str[index];
+					return true;
+				}
+				return false;
 			}
-			var insideBraces = false;
-			var openBraceCount = 0;
-			var sbNode = new StringBuilder();
-			var sbNodes = new List<StringBuilder>();
 
 			// TODO: patch Utils.Localizer?
 			var language = new Dictionary<string, string>()
@@ -261,11 +267,6 @@ public class UnaryExprNodePatch
 						LogWarning("warning_fstring_invalid_escape", currentChar);
 					}
 
-					// clear the flag
-					wasLastCharEscape = false;
-					// clear the current char so the flag won't be set by MoveNext()
-					currentChar = default;
-
 					// next iteration
 					return;
 				}
@@ -280,11 +281,6 @@ public class UnaryExprNodePatch
 					{
 						// the two become one, the 1st was skipped
 						sbNode.Append(currentChar);
-
-						// clear the flag
-						wasLastCharOpenBrace = false;
-						// clear the current char so the flag won't be set by MoveNext()
-						currentChar = default;
 
 						// next iteration
 						return;
@@ -314,11 +310,6 @@ public class UnaryExprNodePatch
 					{
 						// the two become one, the 1st was skipped
 						sbNode.Append(currentChar);
-
-						// clear the flag
-						wasLastCharCloseBrace = false;
-						// clear the current char so the flag won't by MoveNext()
-						currentChar = default;
 
 						// next iteration
 						return;
