@@ -52,7 +52,7 @@ public class UnaryExprNodePatch
                     throw new ExecuteException(CodeUtilities.FormatError("error_bad_unary_operator", op, rhs));
                 }
 
-                var num = Convert.ToInt64(number.num);
+                var num = Convert.ToInt32(number.num);
                 state.returnValue = new PyNumber(~num);
                 break;
             }
@@ -72,7 +72,7 @@ public class UnaryExprNodePatch
                     state.returnValue = new PyString(pyString.str);
                     break;
                 }
-                
+
                 // Step 2: Evaluate the expressions
                 var sb = new StringBuilder();
                 foreach (var part in parts)
