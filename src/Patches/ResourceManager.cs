@@ -1,7 +1,5 @@
 using HarmonyLib;
-using EnhancedPython.utils;
-using System.Text;
-using System.Runtime.InteropServices;
+using System.Globalization;
 
 namespace EnhancedPython.Patches;
 
@@ -62,10 +60,37 @@ for e in Entities:
                 var yieldUpgradeName = growable.yieldUpgradeName;
                 var numFreeUpgrades = growable.numFreeUpgrades;
                 var numUpgrades = farm.GetNumUpgrades(yieldUpgradeName);
-                var yieldFactor = Math.Max(numUpgrades+numFreeUpgrades,1) * Saver.Inst.harvestFactor;
+                var yieldFactor = Math.Max(numUpgrades + numFreeUpgrades, 1) * Saver.Inst.harvestFactor;
                 // hmm, too bad this is needed
                 var harvestItems = farmObject.objectName == "dinosaur" ? new ItemBlock("bones", 1) : growable.harvestItems;
                 bf.interp.State.ReturnValue = BuiltinFunctions.ItemsToNewDict(harvestItems * yieldFactor);
+                return bf.interp.GetOpCount(NodeType.Expr);
+            };
+        }),
+/*
+for e in Entities:
+	#e={'a',1}
+	s=string(1/6)
+    quick_print('e='+s)
+    quick_print(1/6)
+*/
+        BuiltinFunction.Create("string", "debug", name =>
+        {
+            return parameters =>
+            {
+                var bf = Saver.Inst.mainFarm.workspace.interpreter.bf;
+                if (parameters.Count != 1)
+                    throw new ExecuteException(CodeUtilities.FormatError("error_wrong_number_args", name + "()", 1));
+                switch (parameters[0])
+                {
+                    case PyNumber pyNumber:
+                        var str = pyNumber.num.ToString(CultureInfo.InvariantCulture);
+                        bf.interp.State.ReturnValue = new PyString(str);
+                        break;
+                    default:
+                        bf.interp.State.ReturnValue = new PyString(CodeUtilities.ToNiceString(parameters[0], 1));
+                        break;
+                }
                 return bf.interp.GetOpCount(NodeType.Expr);
             };
         }),
