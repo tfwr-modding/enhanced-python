@@ -25,42 +25,48 @@ for u in Unlocks:
         {
             return parameters =>
             {
-                var __instance = Saver.Inst.mainFarm.workspace.interpreter.bf;
-                __instance.CorrectParams(parameters, new List<Type> { typeof(UnlockSO) }, name);
+                var bf = Saver.Inst.mainFarm.workspace.interpreter.bf;
+                bf.CorrectParams(parameters, new List<Type> { typeof(UnlockSO) }, name);
                 var unlockSO = parameters[0] as UnlockSO;
-                var interp = __instance.interp;
                 var parentUnlock = ResourceManager.GetUnlock(unlockSO.parentUnlock);
-                interp.State.ReturnValue = parentUnlock;
-                return interp.GetOpCount(NodeType.Expr);
+                bf.interp.State.ReturnValue = parentUnlock;
+                return bf.interp.GetOpCount(NodeType.Expr);
             };
         }),
 /* in game test code
-quick_print('len(list(Entities)) =>',len(list(Entities)))
+quick_print('len(list(Entities)) =>', len(list(Entities)))
+i = 0
 for e in Entities:
-    quick_print('get_yield_factor(',e,') =>',get_yield_factor(e))
+    quick_print(i, e)
+    quick_print('  get_yield() =>', get_yield(e))
+    if get_cost(e) != {}:
+        quick_print('  get_cost() =>', get_cost(e))
+    i += 1
 */
-        BuiltinFunction.Create("get_yield_factor", "senses", name =>
+        BuiltinFunction.Create("get_yield", "senses", name =>
         {
             return parameters =>
             {
-                var __instance = Saver.Inst.mainFarm.workspace.interpreter.bf;
-                __instance.CorrectParams(parameters, new List<Type> { typeof(FarmObject) }, name);
-                var interp = __instance.interp;
+                var bf = Saver.Inst.mainFarm.workspace.interpreter.bf;
+                bf.CorrectParams(parameters, new List<Type> { typeof(FarmObject) }, name);
                 var farmObject = parameters[0] as FarmObject;
                 if (farmObject is not Growable growable)
                 {
                     var entity = ResourceManager.GetEntity(farmObject.objectName);
                     if (entity is null)
                         throw new ExecuteException(CodeUtilities.FormatError("error_wrong_args", 1, name + "()", parameters[0]));
-                    interp.State.ReturnValue = new PyNone();
-                    return interp.GetOpCount(NodeType.Expr);
+                    bf.interp.State.ReturnValue = new PyNone();
+                    return bf.interp.GetOpCount(NodeType.Expr);
                 }
                 var farm = Saver.Inst.mainFarm;
                 var yieldUpgradeName = growable.yieldUpgradeName;
                 var numFreeUpgrades = growable.numFreeUpgrades;
                 var numUpgrades = farm.GetNumUpgrades(yieldUpgradeName);
-                interp.State.ReturnValue = new PyNumber(Math.Max(numUpgrades+numFreeUpgrades,1) * Saver.Inst.harvestFactor);
-                return interp.GetOpCount(NodeType.Expr);
+                var yieldFactor = Math.Max(numUpgrades+numFreeUpgrades,1) * Saver.Inst.harvestFactor;
+                // hmm, too bad this is needed
+                var harvestItems = farmObject.objectName == "dinosaur" ? new ItemBlock("bones", 1) : growable.harvestItems;
+                bf.interp.State.ReturnValue = BuiltinFunctions.ItemsToNewDict(harvestItems * yieldFactor);
+                return bf.interp.GetOpCount(NodeType.Expr);
             };
         }),
     };
