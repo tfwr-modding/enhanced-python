@@ -1,5 +1,6 @@
-﻿using System.Text;
-using EnhancedPython.utils;
+﻿using System.Globalization;
+using System.Text;
+using EnhancedPython.Features.FormatStrings;
 using HarmonyLib;
 
 namespace EnhancedPython.Patches.Nodes;
@@ -20,10 +21,10 @@ public class UnaryExprNodePatch
 
         var customOPs = new[]
         {
-			// bitwise not
-			"~",
-			// f"string" and r"string"
-			"f", "r"
+            // bitwise not
+            "~",
+            // f"string" and r"string"
+            "f", "r"
         };
 
         if (!customOPs.Contains(op))
@@ -63,13 +64,13 @@ public class UnaryExprNodePatch
                     throw new ExecuteException(CodeUtilities.FormatError("error_bad_unary_operator", op, rhs));
 
                 // Step 1: Extract all the {} expressions from the string
-                var parts = Features.FormatStrings.StrFmtParser.SplitOnExpressions(pyString.str);
+                var parts = StrFmtParser.SplitOnExpressions(pyString.str);
                 Plugin.Log.LogInfo($"SplitOnEmbeddedExpressions():\n • {string.Join("\n • ", parts)}");
 
                 // If there are no expressions, return the string as is.
                 if (!parts.Any(p => p.IsExpression))
                 {
-                    state.returnValue = new PyString(pyString.str);
+                    state.returnValue = pyString;
                     break;
                 }
 
@@ -77,16 +78,38 @@ public class UnaryExprNodePatch
                 var sb = new StringBuilder();
                 foreach (var part in parts)
                 {
-                    if (part.IsExpression)
+                    if (part.IsExpression is false)
                     {
-                        // TODO(Arjix): Interpreter.Evaluate is not a real thing :(
-                        // sb.Append(interpreter.Evaluate(part.Content, state, depth + 1));
+                        // not an expression, append as is
+                        sb.Append(part.Content);
+                        continue;
                     }
-                    else sb.Append(part.Content);
+                    // else handle the expression
+                    // tokenize it
+                    _ = Tokenizer.Tokenize($"({part.Content})", out var tokenStream);
+                    // remove the added NEW_LINE token. don't know why it was added.
+                    _ = tokenStream.Consume(TokenType.NEW_LINE);
+                    // TODO(Noon): remove debugging info
+                    foreach (var t in tokenStream)
+                        Plugin.Log.LogWarning($"{t.type}: {t.value}");
+                    // parse it
+                    var bracketNode = Parser.BracketExpression(tokenStream, __instance.codeWindow);
+                    // evaluate it
+                    foreach (var numOps in bracketNode.slots[0].Execute(state, interpreter, depth + 1))
+                        yield return numOps;
+                    // convert the result to a string
+                    var str = state.returnValue switch
+                    {
+                        PyNumber pyNumber => pyNumber.num.ToString(CultureInfo.InvariantCulture),
+                        _ => CodeUtilities.ToNiceString(state.returnValue, 1),
+                    };
+                    sb.Append(str);
                 }
 
                 // Step 3: Create a new string with the evaluated expressions.
                 state.returnValue = new PyString(sb.ToString());
+
+                // TODO(Noon): calc number of ops to return instead of just returning 1 op
                 break;
             }
 
