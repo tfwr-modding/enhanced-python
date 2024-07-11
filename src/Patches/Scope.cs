@@ -19,7 +19,7 @@ public class ScopePatches
             goto end;
         }
         
-        if (s.StartsWith('"') || s.StartsWith('\''))
+        if (s.StartsWith("\"") || s.StartsWith("'"))
         {
             __result = new PyString(s.Substring(1, s.Length - 2));
             goto end;
@@ -33,10 +33,10 @@ public class ScopePatches
         
         if (__instance.vars.TryGetValue(s, out __result)) goto end;
         
-        Plugin.Log.LogInfo($"Unknown node: {s}, {string.Join(',', __instance.vars.Keys)}");
+        Plugin.Log.LogInfo($"Unknown node: {s}, {string.Join(",", __instance.vars.Keys)}");
 
         if (__instance.parentScope == null)
-            throw new ExecuteException(CodeUtilities.FormatError("error_name_not_defined", s));
+            throw new ExecuteException(CodeUtilities.LocalizeAndFormat("error_name_not_defined", s));
         
         __result = __instance.parentScope.Evaluate(s);
 

@@ -67,7 +67,7 @@ public class StrFmtParser
 
         string FormatError(string key, params object[] args)
         {
-            return language.TryGetValue(key, out var value) ? value : CodeUtilities.FormatError(key, args);
+            return language.TryGetValue(key, out var value) ? value : CodeUtilities.LocalizeAndFormat(key, args);
         }
 
         bool MoveNext()
