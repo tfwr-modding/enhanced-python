@@ -15,22 +15,22 @@ public class StrFmtParser
     };
 
     public readonly record struct StringPart(string Content, bool IsExpression);
-    
+
     // split on embedded expressions (e.g. {1+1})
     public static StringPart[] SplitOnExpressions(string str)
     {
         var index = -1;
         var currentChar = default(char);
-        
+
         var insideBraces = false;
         var openBraceCount = 0;
         var wasLastCharEscape = false;
         var wasLastCharOpenBrace = false;
         var wasLastCharCloseBrace = false;
-        
+
         var parts = new List<StringPart>();
         var currentPart = new StringBuilder();
-        
+
         // iterate over the string
         while (MoveNext())
         {
@@ -53,11 +53,11 @@ public class StrFmtParser
 
         if (currentPart.Length > 0) // is the last node not empty?
         {
-            parts.Add(new StringPart(currentPart.ToString(), false));
+            parts.Add(new StringPart(currentPart.ToString(), IsExpression: false));
         }
 
         return parts.ToArray();
-        
+
         void LogWarning(string key, params object[] args)
         {
             var format = language.TryGetValue(key, out var value) ? value : Localizer.Localize(key);
@@ -114,22 +114,22 @@ public class StrFmtParser
                 {
                     // more open braces?
                     case > 0:
-                        currentPart.Append(currentChar);
-                        return;
+                    currentPart.Append(currentChar);
+                    return;
                     // too many close braces
                     case < 0:
-                        throw new ExecuteException(FormatError("error_fstring_single_close"));
+                    throw new ExecuteException(FormatError("error_fstring_single_close"));
                 }
 
-                // TODO: handle empty expressions with whitespace
-                if (currentPart.Length == 0)
+                var expression = currentPart.ToString();
+                if (expression.Trim().Length == 0)
                 {
                     throw new ExecuteException(FormatError("error_fstring_empty_not_allowed"));
                 }
 
                 // switch to outside braces
                 insideBraces = false;
-                parts.Add(new StringPart(currentPart.ToString(), true));
+                parts.Add(new StringPart(expression, IsExpression: true));
                 currentPart = new StringBuilder();
 
                 // clear the flag
@@ -196,7 +196,7 @@ public class StrFmtParser
 
                 insideBraces = true;
                 openBraceCount = 1;
-                parts.Add(new StringPart(currentPart.ToString(), false));
+                parts.Add(new StringPart(currentPart.ToString(), IsExpression: false));
                 currentPart = new StringBuilder();
 
                 // rehandle the current char as inside braces
